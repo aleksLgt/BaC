@@ -1,0 +1,54 @@
+version: '3'
+
+networks:
+    internal:
+        driver: bridge
+
+services:
+    db:
+        image: postgres
+        restart: always
+        networks:
+            - internal
+        ports:
+            - "5432:5432"
+        environment:
+            - POSTGRES_DB=db
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+        volumes:
+            - ./docker/postgres/datadir:/var/lib/postgresql/data
+
+    php-fpm:
+        build:
+            context: docker/php-fpm
+        volumes:
+            - ./:/var/www
+        environment:
+            PHP_IDE_CONFIG: "serverName=Docker"
+        depends_on:
+            - db
+        networks:
+            - internal
+
+    nginx:
+        build:
+            context: docker/nginx
+        volumes:
+            - ./:/var/www/
+            - ./storage/app/public/:/var/www/public/storage/
+        ports:
+            - 80:80
+        depends_on:
+            - php-fpm
+            - go
+        networks:
+            - internal
+
+    go:
+        build:
+            context: docker/golang/.
+        depends_on:
+            - db
+        networks:
+            - internal
